@@ -82,11 +82,11 @@ def receiveMsg():
                     #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
                     if ack == "ACK":
                         #mensagem para termos controle de quando temos um ACK e de qual pacote é
-                        print("ACK: " + str(packet, "utf-8"))
+                        print("ACK: (" + str(packet, "utf-8") + ")")
                     if ack == "maquinanaoexiste":
                         #mensagem para termos controle de quando temos um maquinanaoexiste e
                         #de qual pacote é
-                        print("maquinanaoexiste: " + str(packet, "utf-8"))
+                        print("maquinanaoexiste: (" + str(packet, "utf-8") + ")")
                     #passo o token pra prox maquina
                     Token = False
                     send.sendto(bytes("1111", "utf8"), SENDTO)
@@ -101,7 +101,7 @@ def receiveMsg():
                     Retransmits = 1
                 if ack == "NAK" and Retransmits>0:
                     #se for nak e já tiver retransmitido
-                    print("NAK and already Retransmitted: "+ str(packet, "utf-8"))
+                    print("NAK and already Retransmitted: ("+ str(packet, "utf-8") + ")")
                     Retransmits = 0
             #########################################################################################
             ######################################################################se eu for o destino
@@ -115,8 +115,8 @@ def receiveMsg():
                 print(" Cliente:", end='')
                 print(str(client))
                 ackPacket = str(packet, "utf-8")
-                ackPacket.replace("maquinanaoexiste", ack, 1)
-                ackPacket.replace("NAK", ack, 1)
+                ackPacket = ackPacket.replace("maquinanaoexiste", "ACK", 1)
+                ackPacket = ackPacket.replace("NAK", "ACK", 1)
                 #reconstroi o packet e envia pro proximo
                 send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
             #########################################################################################
