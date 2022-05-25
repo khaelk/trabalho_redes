@@ -59,6 +59,7 @@ def sendMsg():
 def receiveMsg(Token):
     while True:
         sleep(5)
+        print("Vou receber o pacote")
         packet, client = udp.recvfrom(1024)
         receivedPacket = str(packet, "utf-8").split(';', 1)
         if receivedPacket[0] == '2222':
