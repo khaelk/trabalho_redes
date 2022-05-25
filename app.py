@@ -47,11 +47,12 @@ QueueMsgs = [
 "2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas3!"
 ]
 
-def sendMsg():
+def sendMsg(Token):
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
     if len(QueueMsgs) == 0:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
+        Token = False
         send.sendto(bytes("1111", "utf8"), SENDTO)
     if Token and len(QueueMsgs)>0:
         print("Vou enviar uma mensagem")
@@ -78,6 +79,7 @@ def receiveMsg(Token, Retransmits):
                     #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
                     print("Nao retransmito a mensagem e apenas passo o token caso ME ou ACK")
                     #passo o token pra prox maquina
+                    Token = False
                     send.sendto(bytes("1111", "utf8"), SENDTO)
                     #caso o pacote com NAK tenha retornado com ACK
                     #reestabeleco que posso ter retransmissao p o prox da fila
@@ -121,10 +123,10 @@ def receiveMsg(Token, Retransmits):
         else:
             print("Unknown type of packet")
         if Token:
-            sendMsg()
+            sendMsg(Token)
 
 if Token:
-    sendMsg()
+    sendMsg(Token)
 receiveMsg(Token, Retransmits)
 
 udp.close()
