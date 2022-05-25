@@ -42,13 +42,12 @@ RECEIVER = (MYIP, int(PORTA))
 udp.bind(RECEIVER)
 
 QueueMsgs = [
-"2222;maquinanaoexiste:Bob:Bob:19385749:Oi Pessoas1!", 
-"2222;maquinanaoexiste:Bob:Bob:19385749:Oi Pessoas2!", 
-"2222;maquinanaoexiste:Bob:Bob:19385749:Oi Pessoas3!"
+"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas1!", 
+"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas2!", 
+"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas3!"
 ]
 
 def sendMsg():
-    print(Token)
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
     if len(QueueMsgs) == 0:
@@ -73,7 +72,9 @@ def receiveMsg():
             if origin == MY_NAME:
                 if ack == "maquinanaoexiste" or ack == "ACK":
                     #retiro da fila
-                    print("Retiro da fila porque deu maquinanaoexiste ou ACK")
+                    print("Nao retransmito a mensagem e apenas passo o token caso ME ou ACK")
+                    #passo o token pra prox maquina
+                    send.sendto(bytes("1111", "utf8"), SENDTO)
                     #caso o pacote com NAK tenha retornado com ACK
                     #reestabeleco que posso ter retransmissao p o prox da fila
                     Retransmits = 0
@@ -115,8 +116,11 @@ def receiveMsg():
             print("Recebi o Token!")
         else:
             print("Unknown type of packet")
+        if Token:
+            sendMsg()
 
-sendMsg()
+if Token:
+    sendMsg()
 receiveMsg()
 
 udp.close()
