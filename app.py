@@ -132,7 +132,7 @@ def receiveMsg():
         else:
             print("Unknown type of packet")
         if Token:
-            sendMsg(Token)
+            sendMsg()
 
 if Token:
     sendMsg()
