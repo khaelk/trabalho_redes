@@ -56,7 +56,7 @@ def sendMsg():
         send.sendto(bytes(QueueMsgs.pop(0), "utf8"), SENDTO)
     # no envio verificar se é unicast ou broadcast
 
-def receiveMsg():
+def receiveMsg(Token):
     while True:
         sleep(5)
         packet, client = udp.recvfrom(1024)
@@ -121,7 +121,7 @@ def receiveMsg():
 
 if Token:
     sendMsg()
-receiveMsg()
+receiveMsg(Token)
 
 udp.close()
 send.close()
