@@ -47,7 +47,8 @@ QueueMsgs = [
 "2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas3!"
 ]
 
-def sendMsg(Token):
+def sendMsg():
+    global Token
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
     if len(QueueMsgs) == 0:
@@ -59,7 +60,9 @@ def sendMsg(Token):
         send.sendto(bytes(QueueMsgs.pop(0), "utf8"), SENDTO)
     # no envio verificar se é unicast ou broadcast
 
-def receiveMsg(Token, Retransmits):
+def receiveMsg():
+    global Token
+    global Retransmits
     while True:
         sleep(5)
         print("Vou receber um pacote")
@@ -126,8 +129,9 @@ def receiveMsg(Token, Retransmits):
             sendMsg(Token)
 
 if Token:
-    sendMsg(Token)
-receiveMsg(Token, Retransmits)
+    sendMsg()
+
+receiveMsg()
 
 udp.close()
 send.close()
