@@ -80,13 +80,19 @@ def receiveMsg():
             if origin == MY_NAME:
                 if ack == "maquinanaoexiste" or ack == "ACK":
                     #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
-                    print("Nao retransmito a mensagem e apenas passo o token caso ME ou ACK")
+                    if ack == "ACK":
+                        #mensagem para termos controle de quando temos um ACK e de qual pacote é
+                        print("ACK: " + str(packet, "utf-8"))
+                    if ack == "maquinanaoexiste":
+                        #mensagem para termos controle de quando temos um maquinanaoexiste e
+                        #de qual pacote é
+                        print("maquinanaoexiste: " + str(packet, "utf-8"))
                     #passo o token pra prox maquina
                     Token = False
                     send.sendto(bytes("1111", "utf8"), SENDTO)
-                    #caso o pacote com NAK tenha retornado com ACK
+                    #caso um pacote com NAK tenha retornado com ACK ou maquinanaoexiste
                     #reestabeleco que posso ter retransmissao p o prox da fila
-                    Retransmits = 0
+                    Retransmits = 0                    
                 if ack == "NAK" and Retransmits<1:
                     #se for nak e nao tiver retransmitido
                     #reenvio a mensagem na rede
@@ -95,7 +101,7 @@ def receiveMsg():
                     Retransmits = 1
                 if ack == "NAK" and Retransmits>0:
                     #se for nak e já tiver retransmitido
-                    print("Tiro da fila nao retransmito")
+                    print("NAK and already Retransmitted: "+ str(packet, "utf-8"))
                     Retransmits = 0
             #########################################################################################
             ######################################################################se eu for o destino
