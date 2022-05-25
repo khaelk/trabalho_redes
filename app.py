@@ -51,18 +51,21 @@ def sendMsg():
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
     if len(QueueMsgs) == 0:
+        print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         send.sendto(bytes("1111", "utf8"), SENDTO)
-    if Token:
+    if Token and len(QueueMsgs)>0:
+        print("Vou enviar uma mensagem")
         send.sendto(bytes(QueueMsgs.pop(0), "utf8"), SENDTO)
     # no envio verificar se é unicast ou broadcast
 
-def receiveMsg(Token):
+def receiveMsg(Token, Retransmits):
     while True:
         sleep(5)
-        print("Vou receber o pacote")
+        print("Vou receber um pacote")
         packet, client = udp.recvfrom(1024)
         receivedPacket = str(packet, "utf-8").split(';', 1)
         if receivedPacket[0] == '2222':
+            print("Recebi uma mensagem!")
             msgHeader = receivedPacket[1].split(':', 4)
             ack = msgHeader[0]
             origin = msgHeader[1]
@@ -72,7 +75,7 @@ def receiveMsg(Token):
             ######################################################################se eu for a origem
             if origin == MY_NAME:
                 if ack == "maquinanaoexiste" or ack == "ACK":
-                    #retiro da fila
+                    #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
                     print("Nao retransmito a mensagem e apenas passo o token caso ME ou ACK")
                     #passo o token pra prox maquina
                     send.sendto(bytes("1111", "utf8"), SENDTO)
@@ -113,8 +116,8 @@ def receiveMsg(Token):
                 send.sendto(packet, SENDTO) 
             #########################################################################################               
         elif receivedPacket[0] == '1111':
-            Token = True
             print("Recebi o Token!")
+            Token = True
         else:
             print("Unknown type of packet")
         if Token:
@@ -122,7 +125,7 @@ def receiveMsg(Token):
 
 if Token:
     sendMsg()
-receiveMsg(Token)
+receiveMsg(Token, Retransmits)
 
 udp.close()
 send.close()
