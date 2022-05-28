@@ -1,6 +1,8 @@
 import socket
 from time import sleep, perf_counter
-from threading import Thread
+from threading import Thread 
+import queue
+import binascii
 
 #variaveis globais, de token, retransmissao, e pacote atual
 Token = False
@@ -41,14 +43,27 @@ udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 RECEIVER = (MYIP, int(PORTA))
 udp.bind(RECEIVER)
 
+#TO-DO calculo do crc32 ao adicionar msgs na fila, adicao da msg e adicao do destino
+
+#TO-DO controle do token
+
+#TO-DO msgs para TODOS ou unicast
+
+#TO-DO threads -> usuario poder digitar
+
+#TO-DO no nak de retransmissao recolocar a msg original (anotado ali embaixo onde colocar isso)
+
 QueueMsgs = [
 "2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas1!", 
 "2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas2!", 
 "2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas3!"
 ]
 
+q = queue.Queue()
+
 def sendMsg():
     global Token
+    global Retransmits
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
     if len(QueueMsgs) == 0:
@@ -57,6 +72,8 @@ def sendMsg():
         send.sendto(bytes("1111", "utf8"), SENDTO)
     if Token and len(QueueMsgs)>0:
         print("Vou enviar uma mensagem")
+        if Retransmits>0:
+            print("Será uma retransmissao!!!")
         send.sendto(bytes(QueueMsgs.pop(0), "utf8"), SENDTO)
     # no envio verificar se é unicast ou broadcast
 
@@ -96,8 +113,19 @@ def receiveMsg():
                 if ack == "NAK" and Retransmits<1:
                     #se for nak e nao tiver retransmitido
                     #reenvio a mensagem na rede
-                    print("NAK")
-                    send.sendto(packet, SENDTO)
+                    print("NAK: (" + str(packet, "utf-8") + ")")
+                    #recoloco o pacote que deu NAK na fila novamente
+                    #colocar na fila com maquinanaoexiste
+                    mnePacket = str(packet, "utf-8")
+                    mnePacket = mnePacket.replace("NAK", "maquinanaoexiste", 1)
+                    #### IMPORTANTE: colocar a mensagem original novamente antes de por na fila
+                    #### (ter um jeito de guardar isso)
+
+                    q.put(mnePacket)
+                    #envio o token e nao o pacote!!!!!
+                    Token = False
+                    send.sendto(bytes("1111", "utf8"), SENDTO)
+                    #inibo que haja mais de uma retransmissao
                     Retransmits = 1
                 if ack == "NAK" and Retransmits>0:
                     #se for nak e já tiver retransmitido
@@ -108,17 +136,26 @@ def receiveMsg():
             if destination == MY_NAME:
                 #se eu for o destino
                 #verificar o crc para o recalculo / NAK se não passar
-
-                #se passar no calculo de crc coloca o ACK
-                ack = "ACK"
-                print(recvMsg, end='')
-                print(" Cliente:", end='')
-                print(str(client))
-                ackPacket = str(packet, "utf-8")
-                ackPacket = ackPacket.replace("maquinanaoexiste", "ACK", 1)
-                ackPacket = ackPacket.replace("NAK", "ACK", 1)
-                #reconstroi o packet e envia pro proximo
-                send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
+                if binascii.crc32(bytes(recvMsg, "utf-8")) != crc:
+                    #caso a igualdade de crc de diferente poem NAK
+                    ack = "NAK"
+                    print("Encontrei um erro na mensagem! Coloquei NAK")
+                    nakPacket = str(packet, "utf-8")
+                    nakPacket = nakPacket.replace("maquinanaoexiste", "NAK", 1)
+                    #reconstroi o packet e envia pro proximo com NAK
+                    send.sendto(bytes(nakPacket, "utf8"), SENDTO)  
+                #caso contrario ->     
+                else:
+                    #se passar no calculo de crc coloca o ACK
+                    ack = "ACK"
+                    print(recvMsg, end='')
+                    print(" Cliente:", end='')
+                    print(str(client))
+                    ackPacket = str(packet, "utf-8")
+                    ackPacket = ackPacket.replace("maquinanaoexiste", "ACK", 1)
+                    ackPacket = ackPacket.replace("NAK", "ACK", 1)
+                    #reconstroi o packet e envia pro proximo com ACK
+                    send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
             #########################################################################################
             #########################################################se eu for apenas o intermediario
             if origin != MY_NAME and destination != MY_NAME:
