@@ -1,4 +1,5 @@
 import socket
+import threading
 from time import sleep, perf_counter
 from threading import Thread 
 import queue
@@ -43,38 +44,47 @@ udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 RECEIVER = (MYIP, int(PORTA))
 udp.bind(RECEIVER)
 
-#TO-DO calculo do crc32 ao adicionar msgs na fila, adicao da msg e adicao do destino
-
 #TO-DO controle do token
+
+#TO-DO Gerador de erros (crc ou msg)
 
 #TO-DO msgs para TODOS ou unicast
 
-#TO-DO threads -> usuario poder digitar
+#TO-DO threads -> usuario poder digitar (((((((FALTA TESTAR)))))))
 
-#TO-DO no nak de retransmissao recolocar a msg original (anotado ali embaixo onde colocar isso)
+#TO-DO no nak de retransmissao recolocar a msg original (anotado ali embaixo onde colocar isso) (((((((FALTA TESTAR)))))))
 
-QueueMsgs = [
-"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas1!", 
-"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas2!", 
-"2222;maquinanaoexiste:Bob:Rob:19385749:Oi Pessoas3!"
-]
 
-q = queue.Queue()
+q = queue.Queue(10)
+
+def getMessageConsole():
+    while True:
+        print('Digite o apelido da maquina destino:')
+        dest = input()
+        print('Digite a mensagem:')
+        msg = input()
+        crc = binascii.crc32(bytes(msg, "utf-8"))
+        msg = "2222;maquinanaoexiste:"+MY_NAME+":"+dest+":"+str(crc)+":"+msg
+        try:
+            q.put_nowait(msg)
+        except:
+            print('Fila cheia D:')
+        
 
 def sendMsg():
     global Token
     global Retransmits
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
-    if len(QueueMsgs) == 0:
+    if q.empty:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         Token = False
         send.sendto(bytes("1111", "utf8"), SENDTO)
-    if Token and len(QueueMsgs)>0:
+    elif Token:
         print("Vou enviar uma mensagem")
         if Retransmits>0:
             print("Será uma retransmissao!!!")
-        send.sendto(bytes(QueueMsgs.pop(0), "utf8"), SENDTO)
+        send.sendto(bytes(q.queue[0], "utf8"), SENDTO)
     # no envio verificar se é unicast ou broadcast
 
 def receiveMsg():
@@ -100,10 +110,12 @@ def receiveMsg():
                     if ack == "ACK":
                         #mensagem para termos controle de quando temos um ACK e de qual pacote é
                         print("ACK: (" + str(packet, "utf-8") + ")")
+                        q.get()
                     if ack == "maquinanaoexiste":
                         #mensagem para termos controle de quando temos um maquinanaoexiste e
                         #de qual pacote é
                         print("maquinanaoexiste: (" + str(packet, "utf-8") + ")")
+                        q.get()
                     #passo o token pra prox maquina
                     Token = False
                     send.sendto(bytes("1111", "utf8"), SENDTO)
@@ -131,6 +143,7 @@ def receiveMsg():
                     #se for nak e já tiver retransmitido
                     print("NAK and already Retransmitted: ("+ str(packet, "utf-8") + ")")
                     Retransmits = 0
+                    q.get()
             #########################################################################################
             ######################################################################se eu for o destino
             if destination == MY_NAME:
@@ -171,10 +184,12 @@ def receiveMsg():
         if Token:
             sendMsg()
 
+
 if Token:
     sendMsg()
 
-receiveMsg()
+threadAdd = threading.Thread(target=getMessageConsole).start()
+threadRemove = threading.Thread(target=receiveMsg).start()
 
 udp.close()
 send.close()
