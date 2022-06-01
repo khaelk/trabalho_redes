@@ -48,16 +48,14 @@ udp.bind(RECEIVER)
 
 #TO-DO Gerador de erros (crc ou msg)
 
-#TO-DO msgs para TODOS ou unicast
+#TO-DO msgs para TODOS ou unicast ((((((((check só falta testar))))))
 
-#TO-DO threads -> usuario poder digitar (((((((FALTA TESTAR)))))))
-
-#TO-DO no nak de retransmissao recolocar a msg original (anotado ali embaixo onde colocar isso) (((((((FALTA TESTAR)))))))
-
+#TO-DO threads -> usuario poder digitar melhorar exibicao do console
 
 q = queue.Queue(10)
 
 def getMessageConsole():
+    global q
     while True:
         print('Digite o apelido da maquina destino:')
         dest = input()
@@ -76,7 +74,7 @@ def sendMsg():
     global Retransmits
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
-    if q.empty:
+    if q.qsize() == 0:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         Token = False
         send.sendto(bytes("1111", "utf8"), SENDTO)
@@ -90,6 +88,7 @@ def sendMsg():
 def receiveMsg():
     global Token
     global Retransmits
+    global q
     while True:
         sleep(5)
         print("Vou receber um pacote")
@@ -149,7 +148,7 @@ def receiveMsg():
             if destination == MY_NAME:
                 #se eu for o destino
                 #verificar o crc para o recalculo / NAK se não passar
-                if binascii.crc32(bytes(recvMsg, "utf-8")) != crc:
+                if binascii.crc32(bytes(recvMsg, "utf-8")) != int(crc):
                     #caso a igualdade de crc de diferente poem NAK
                     ack = "NAK"
                     print("Encontrei um erro na mensagem! Coloquei NAK")
@@ -170,6 +169,12 @@ def receiveMsg():
                     #reconstroi o packet e envia pro proximo com ACK
                     send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
             #########################################################################################
+            #########################################################se eu for broadcast
+            if destination == 'TODOS':
+                print(recvMsg, end='')
+                print(" Cliente:", end='')
+                print(str(client))
+                send.sendto(bytes(packet, "utf8"), SENDTO)  
             #########################################################se eu for apenas o intermediario
             if origin != MY_NAME and destination != MY_NAME:
                 #se eu nao for nenhum dos dois, so envia pro proximo
@@ -190,6 +195,3 @@ if Token:
 
 threadAdd = threading.Thread(target=getMessageConsole).start()
 threadRemove = threading.Thread(target=receiveMsg).start()
-
-udp.close()
-send.close()
