@@ -4,6 +4,7 @@ from time import sleep, perf_counter
 from threading import Thread 
 import queue
 import binascii
+import random
 
 #variaveis globais, de token, retransmissao, e pacote atual
 Token = False
@@ -46,11 +47,11 @@ udp.bind(RECEIVER)
 
 #TO-DO controle do token
 
-#TO-DO Gerador de erros (crc ou msg)
+#TO-DO Gerador de erros (crc ou msg) ((((((((((check só falta testar))))))))))
 
 #TO-DO msgs para TODOS ou unicast ((((((((check só falta testar))))))
 
-#TO-DO threads -> usuario poder digitar melhorar exibicao do console
+#TO-DO threads -> usuario poder digitar ((((melhorar exibicao do console))))
 
 q = queue.Queue(10)
 
@@ -80,10 +81,22 @@ def sendMsg():
         send.sendto(bytes("1111", "utf8"), SENDTO)
     elif Token:
         print("Vou enviar uma mensagem")
+        #mensagem de aviso se é retransmissao
         if Retransmits>0:
             print("Será uma retransmissao!!!")
-        send.sendto(bytes(q.queue[0], "utf8"), SENDTO)
-    # no envio verificar se é unicast ou broadcast
+        #calculo para ver se envia msg com erro
+        error = random.randint(1, 100)
+        #ajuste de chance de erro (0 = 100% de chance)
+        if error>0:
+            nextMsg = q.queue[0]
+            headers = nextMsg.split(';', 1)
+            infoHeader = headers[1].split(':', 4)
+            nextMsgHeaderCrc = infoHeader[3]
+            insertedError = int(nextMsgHeaderCrc) + 1
+            nextMsg = q.queue[0].replace(nextMsgHeaderCrc, str(insertedError), 1)
+            send.sendto(bytes(nextMsg, "utf8"), SENDTO)
+        else:
+            send.sendto(bytes(q.queue[0], "utf8"), SENDTO)
 
 def receiveMsg():
     global Token
@@ -129,9 +142,6 @@ def receiveMsg():
                     #colocar na fila com maquinanaoexiste
                     mnePacket = str(packet, "utf-8")
                     mnePacket = mnePacket.replace("NAK", "maquinanaoexiste", 1)
-                    #### IMPORTANTE: colocar a mensagem original novamente antes de por na fila
-                    #### (ter um jeito de guardar isso)
-
                     q.put(mnePacket)
                     #envio o token e nao o pacote!!!!!
                     Token = False
