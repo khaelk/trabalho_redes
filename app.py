@@ -5,10 +5,16 @@ from threading import Thread
 import queue
 import binascii
 import random
+import time
+
+from numpy import minimum
 
 #variaveis globais, de token, retransmissao, e pacote atual
 Token = False
+Control = False
 Retransmits = 0
+tokenTime = time.time()
+minimumTime = 5
 
 #funcao de leitura do arquivo de configuracao
 def readFile( name ):
@@ -25,15 +31,13 @@ def readFile( name ):
                 NAME = lin.rstrip('\n')
             if lineCount == 3:
                 TIME_TOKEN = lin.rstrip('\n')
+                TIME_TOKEN = int(TIME_TOKEN)
             if lineCount == 4:
                 TOKEN = lin.rstrip('\n')
             lineCount = lineCount + 1
     return IP_PORTA, NAME, TIME_TOKEN, TOKEN, IP, PORTA
 
-IP_PORTA, MY_NAME, TIME_TOKEN, START_TOKEN, IP, PORTA = readFile('arq2.txt')
-
-if (START_TOKEN == "true"):
-    Token = True
+IP_PORTA, MY_NAME, TIME_TOKEN, START_TOKEN, IP, PORTA = readFile('arq.txt')
     
 #socket de envio de mensagens
 send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -73,12 +77,15 @@ def getMessageConsole():
 def sendMsg():
     global Token
     global Retransmits
+    global tokenTime
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
+    sleep(5)
     if q.qsize() == 0:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         Token = False
         send.sendto(bytes("1111", "utf8"), SENDTO)
+        tokenTime = time.time()
     elif Token:
         print("Vou enviar uma mensagem")
         #mensagem de aviso se é retransmissao
@@ -87,7 +94,7 @@ def sendMsg():
         #calculo para ver se envia msg com erro
         error = random.randint(1, 100)
         #ajuste de chance de erro (0 = 100% de chance)
-        if error>0:
+        if error<0:
             nextMsg = q.queue[0]
             headers = nextMsg.split(';', 1)
             infoHeader = headers[1].split(':', 4)
@@ -98,12 +105,23 @@ def sendMsg():
         else:
             send.sendto(bytes(q.queue[0], "utf8"), SENDTO)
 
+def timing():
+    global Token
+    global tokenTime
+    while True:
+        diff =  time.time() - tokenTime
+        if diff > TIME_TOKEN:
+            print("Timeout do token, reenviando novo token")
+            Token = False
+            tokenTime = time.time()
+            send.sendto(bytes("1111", "utf8"), SENDTO)
+
+
 def receiveMsg():
     global Token
     global Retransmits
-    global q
+    global q, tokenTime, minimumTime
     while True:
-        sleep(5)
         print("Vou receber um pacote")
         packet, client = udp.recvfrom(1024)
         receivedPacket = str(packet, "utf-8").split(';', 1)
@@ -130,7 +148,9 @@ def receiveMsg():
                         q.get()
                     #passo o token pra prox maquina
                     Token = False
+                    tokenTime = time.time()
                     send.sendto(bytes("1111", "utf8"), SENDTO)
+                    
                     #caso um pacote com NAK tenha retornado com ACK ou maquinanaoexiste
                     #reestabeleco que posso ter retransmissao p o prox da fila
                     Retransmits = 0                    
@@ -142,9 +162,10 @@ def receiveMsg():
                     #colocar na fila com maquinanaoexiste
                     mnePacket = str(packet, "utf-8")
                     mnePacket = mnePacket.replace("NAK", "maquinanaoexiste", 1)
-                    q.put(mnePacket)
                     #envio o token e nao o pacote!!!!!
                     Token = False
+                    
+                    tokenTime = time.time()
                     send.sendto(bytes("1111", "utf8"), SENDTO)
                     #inibo que haja mais de uma retransmissao
                     Retransmits = 1
@@ -194,14 +215,23 @@ def receiveMsg():
         elif receivedPacket[0] == '1111':
             print("Recebi o Token!")
             Token = True
+            print(time.time() - tokenTime, minimumTime)
+            if(minimumTime > time.time() - tokenTime):
+                Token = False
+                print("Removendo o token por ter sido recebido antes do tempo mínimo..")
         else:
             print("Unknown type of packet")
         if Token:
             sendMsg()
+        elif(random.randint(1,100) < 1):
+            send.sendto(bytes("1111", "utf8"), SENDTO)
 
+if (START_TOKEN == "true"):
+    Token = True
+    threading.Thread(target=timing).start()
 
 if Token:
     sendMsg()
 
-threadAdd = threading.Thread(target=getMessageConsole).start()
-threadRemove = threading.Thread(target=receiveMsg).start()
+threading.Thread(target=getMessageConsole).start()
+threading.Thread(target=receiveMsg).start()
