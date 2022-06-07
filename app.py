@@ -169,7 +169,7 @@ def receiveMsg():
                     send.sendto(bytes("1111", "utf8"), SENDTO)
                     #inibo que haja mais de uma retransmissao
                     Retransmits = 1
-                if ack == "NAK" and Retransmits>0:
+                elif ack == "NAK" and Retransmits>0:
                     #se for nak e já tiver retransmitido
                     print("NAK and already Retransmitted: ("+ str(packet, "utf-8") + ")")
                     Retransmits = 0
