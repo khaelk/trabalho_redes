@@ -76,7 +76,7 @@ def sendMsg():
     global tokenTime
     #2222;maquinanaoexiste:Joao:Maria:19385749:Oi Pessoas!
     #1111
-    sleep(5)
+    sleep(sleepTime)
     if q.qsize() == 0:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         Token = False
@@ -106,9 +106,8 @@ def timing():
     global tokenTime
     while True:
         diff =  time.time() - tokenTime
-        if diff > TIME_TOKEN:
+        if (diff > TIME_TOKEN and Token == False):
             print("Timeout do token, reenviando novo token")
-            Token = False
             tokenTime = time.time()
             send.sendto(bytes("1111", "utf8"), SENDTO)
 
@@ -205,6 +204,7 @@ def receiveMsg():
             #########################################################se eu for apenas o intermediario
             if origin != MY_NAME and destination != MY_NAME:
                 #se eu nao for nenhum dos dois, so envia pro proximo
+                sleep(sleepTime)
                 print("Pacote nao e para mim enviando para a proxima maquina")
                 send.sendto(packet, SENDTO) 
             #########################################################################################               
