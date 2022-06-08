@@ -9,12 +9,15 @@ import time
 
 from numpy import minimum
 
-#variaveis globais, de token, retransmissao, e pacote atual
+#variaveis globais, de token, retransmissao
 Token = False
 Control = False
 Retransmits = 0
 tokenTime = time.time()
-minimumTime = 5
+sleepTime = 5
+#quantidade de maquinas na rede a mais que a atual
+qtdMachines = 2
+minimumTime = sleepTime * qtdMachines
 
 #funcao de leitura do arquivo de configuracao
 def readFile( name ):
@@ -48,16 +51,9 @@ MYIP = ''
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 RECEIVER = (MYIP, int(PORTA))
 udp.bind(RECEIVER)
-
-#TO-DO controle do token
-
-#TO-DO Gerador de erros (crc ou msg) ((((((((((check só falta testar))))))))))
-
-#TO-DO msgs para TODOS ou unicast ((((((((check só falta testar))))))
-
-#TO-DO threads -> usuario poder digitar ((((melhorar exibicao do console))))
-
 q = queue.Queue(10)
+
+print("Tempo minimo para receber o token:", minimumTime)
 
 def getMessageConsole():
     global q
@@ -94,7 +90,7 @@ def sendMsg():
         #calculo para ver se envia msg com erro
         error = random.randint(1, 100)
         #ajuste de chance de erro (0 = 100% de chance)
-        if error<0:
+        if error<30:
             nextMsg = q.queue[0]
             headers = nextMsg.split(';', 1)
             infoHeader = headers[1].split(':', 4)
@@ -215,18 +211,20 @@ def receiveMsg():
         elif receivedPacket[0] == '1111':
             print("Recebi o Token!")
             Token = True
-            print(time.time() - tokenTime, minimumTime)
-            if(minimumTime > time.time() - tokenTime):
+            if((minimumTime > time.time() - tokenTime) and Control):
                 Token = False
                 print("Removendo o token por ter sido recebido antes do tempo mínimo..")
         else:
             print("Unknown type of packet")
         if Token:
             sendMsg()
-        elif(random.randint(1,100) < 1):
+        if(random.randint(1,100) < 10):
+            sleep(2)
+            print('NOVO TOKEN')
             send.sendto(bytes("1111", "utf8"), SENDTO)
 
 if (START_TOKEN == "true"):
+    Control = True
     Token = True
     threading.Thread(target=timing).start()
 
