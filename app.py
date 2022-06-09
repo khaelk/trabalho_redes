@@ -7,17 +7,20 @@ import binascii
 import random
 import time
 
-from numpy import minimum
-
-#variaveis globais, de token, retransmissao
+#variaveis globais, de token, controle do token, retransmissao, timer, tempo de sleep
+#e tempo minimo de circulacao do token
 Token = False
 Control = False
 Retransmits = 0
 tokenTime = time.time()
 sleepTime = 5
 #quantidade de maquinas na rede a mais que a atual
-qtdMachines = 2
+qtdMachines = 1
 minimumTime = sleepTime * qtdMachines
+
+#chance de gerar erro e chance de perder token/gerar um aleatoriamente
+nakChance = 30
+tokChance = 10
 
 #funcao de leitura do arquivo de configuracao
 def readFile( name ):
@@ -46,7 +49,7 @@ IP_PORTA, MY_NAME, TIME_TOKEN, START_TOKEN, IP, PORTA = readFile('arq.txt')
 send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 SENDTO = (IP, int(PORTA))
 
-#socket de recebimento de mensagens
+#socket de recebimento de mensagens tamanho max -> 10
 MYIP = ''
 udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 RECEIVER = (MYIP, int(PORTA))
@@ -55,6 +58,7 @@ q = queue.Queue(10)
 
 print("Tempo minimo para receber o token:", minimumTime)
 
+#funcao que registra as entradas do usuario
 def getMessageConsole():
     global q
     while True:
@@ -69,7 +73,7 @@ def getMessageConsole():
         except:
             print('Fila cheia D:')
         
-
+#envio de msg
 def sendMsg():
     global Token
     global Retransmits
@@ -80,7 +84,10 @@ def sendMsg():
     if q.qsize() == 0:
         print("Nenhuma mensagem na fila, vou enviar o Token adiante")
         Token = False
-        send.sendto(bytes("1111", "utf8"), SENDTO)
+        if(random.randint(1,100) > tokChance):
+            send.sendto(bytes("1111", "utf8"), SENDTO)   
+        else:
+            print("Nao enviei o token!!!")
         tokenTime = time.time()
     elif Token:
         print("Vou enviar uma mensagem")
@@ -89,8 +96,8 @@ def sendMsg():
             print("Será uma retransmissao!!!")
         #calculo para ver se envia msg com erro
         error = random.randint(1, 100)
-        #ajuste de chance de erro (0 = 100% de chance)
-        if error<30:
+        #chance de erro
+        if error<nakChance:
             nextMsg = q.queue[0]
             headers = nextMsg.split(';', 1)
             infoHeader = headers[1].split(':', 4)
@@ -129,7 +136,7 @@ def receiveMsg():
             crc = msgHeader[3]
             recvMsg = msgHeader[4]
             ######################################################################se eu for a origem
-            if origin == MY_NAME:
+            if origin == MY_NAME and destination != "TODOS":
                 if ack == "maquinanaoexiste" or ack == "ACK":
                     #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
                     if ack == "ACK":
@@ -144,29 +151,29 @@ def receiveMsg():
                     #passo o token pra prox maquina
                     Token = False
                     tokenTime = time.time()
-                    send.sendto(bytes("1111", "utf8"), SENDTO)
-                    
+                    if(random.randint(1,100) > tokChance):
+                        send.sendto(bytes("1111", "utf8"), SENDTO)   
+                    else:
+                        print("Nao enviei o token!!!")                 
                     #caso um pacote com NAK tenha retornado com ACK ou maquinanaoexiste
                     #reestabeleco que posso ter retransmissao p o prox da fila
                     Retransmits = 0                    
                 if ack == "NAK" and Retransmits<1:
                     #se for nak e nao tiver retransmitido
-                    #reenvio a mensagem na rede
                     print("NAK: (" + str(packet, "utf-8") + ")")
-                    #recoloco o pacote que deu NAK na fila novamente
-                    #colocar na fila com maquinanaoexiste
-                    mnePacket = str(packet, "utf-8")
-                    mnePacket = mnePacket.replace("NAK", "maquinanaoexiste", 1)
-                    #envio o token e nao o pacote!!!!!
-                    Token = False
-                    
+                    #passo o token adiante
+                    Token = False                    
                     tokenTime = time.time()
-                    send.sendto(bytes("1111", "utf8"), SENDTO)
+                    if(random.randint(1,100) > tokChance):
+                        send.sendto(bytes("1111", "utf8"), SENDTO)
+                    else:
+                        print("Nao enviei o token!!!")
                     #inibo que haja mais de uma retransmissao
                     Retransmits = 1
                 elif ack == "NAK" and Retransmits>0:
                     #se for nak e já tiver retransmitido
                     print("NAK and already Retransmitted: ("+ str(packet, "utf-8") + ")")
+                    #reestabeleco que pode haver retransmissao para proximo pacotes
                     Retransmits = 0
                     q.get()
             #########################################################################################
@@ -181,6 +188,7 @@ def receiveMsg():
                     nakPacket = str(packet, "utf-8")
                     nakPacket = nakPacket.replace("maquinanaoexiste", "NAK", 1)
                     #reconstroi o packet e envia pro proximo com NAK
+                    sleep(sleepTime)
                     send.sendto(bytes(nakPacket, "utf8"), SENDTO)  
                 #caso contrario ->     
                 else:
@@ -193,16 +201,22 @@ def receiveMsg():
                     ackPacket = ackPacket.replace("maquinanaoexiste", "ACK", 1)
                     ackPacket = ackPacket.replace("NAK", "ACK", 1)
                     #reconstroi o packet e envia pro proximo com ACK
+                    sleep(sleepTime)
                     send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
             #########################################################################################
             #########################################################se eu for broadcast
             if destination == 'TODOS':
-                print(recvMsg, end='')
-                print(" Cliente:", end='')
-                print(str(client))
-                send.sendto(bytes(packet, "utf8"), SENDTO)  
+                if origin == MY_NAME:
+                    print('Removi uma mensagem que foi enviada para TODOS da fila.')
+                    q.get()
+                else:
+                    sleep(sleepTime)
+                    print(recvMsg, end='')
+                    print(" Cliente:", end='')
+                    print(str(client))
+                    send.sendto(packet, SENDTO)  
             #########################################################se eu for apenas o intermediario
-            if origin != MY_NAME and destination != MY_NAME:
+            elif origin != MY_NAME and destination != MY_NAME:
                 #se eu nao for nenhum dos dois, so envia pro proximo
                 sleep(sleepTime)
                 print("Pacote nao e para mim enviando para a proxima maquina")
@@ -210,17 +224,22 @@ def receiveMsg():
             #########################################################################################               
         elif receivedPacket[0] == '1111':
             print("Recebi o Token!")
+            if Token:
+                print("Recebi um token duplicado (ja tenho um token)!")
+                continue
             Token = True
+            #para maquina com true no arquivo de config controla se recebeu antes do tempo
             if((minimumTime > time.time() - tokenTime) and Control):
                 Token = False
-                print("Removendo o token por ter sido recebido antes do tempo mínimo..")
+                print("Removendo o token por ter sido recebido antes do tempo mínimo.")
         else:
+            #caso nao seja msg nem token
             print("Unknown type of packet")
         if Token:
             sendMsg()
-        if(random.randint(1,100) < 10):
+        if(random.randint(1,100) < tokChance):
             sleep(2)
-            print('NOVO TOKEN')
+            print('Novo token gerado aleatoriamente!!!')
             send.sendto(bytes("1111", "utf8"), SENDTO)
 
 if (START_TOKEN == "true"):
