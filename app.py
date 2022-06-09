@@ -15,7 +15,7 @@ Retransmits = 0
 tokenTime = time.time()
 sleepTime = 5
 #quantidade de maquinas na rede a mais que a atual
-qtdMachines = 2
+qtdMachines = 1
 minimumTime = sleepTime * qtdMachines
 
 #chance de gerar erro e chance de perder token/gerar um aleatoriamente
@@ -188,6 +188,7 @@ def receiveMsg():
                     nakPacket = str(packet, "utf-8")
                     nakPacket = nakPacket.replace("maquinanaoexiste", "NAK", 1)
                     #reconstroi o packet e envia pro proximo com NAK
+                    sleep(sleepTime)
                     send.sendto(bytes(nakPacket, "utf8"), SENDTO)  
                 #caso contrario ->     
                 else:
@@ -200,6 +201,7 @@ def receiveMsg():
                     ackPacket = ackPacket.replace("maquinanaoexiste", "ACK", 1)
                     ackPacket = ackPacket.replace("NAK", "ACK", 1)
                     #reconstroi o packet e envia pro proximo com ACK
+                    sleep(sleepTime)
                     send.sendto(bytes(ackPacket, "utf8"), SENDTO)                
             #########################################################################################
             #########################################################se eu for broadcast
