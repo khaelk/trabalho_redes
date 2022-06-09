@@ -136,7 +136,7 @@ def receiveMsg():
             crc = msgHeader[3]
             recvMsg = msgHeader[4]
             ######################################################################se eu for a origem
-            if origin == MY_NAME:
+            if origin == MY_NAME and destination != "TODOS":
                 if ack == "maquinanaoexiste" or ack == "ACK":
                     #"retiro da fila" a mensagem, ou seja nao repasso nao faço nada com ela
                     if ack == "ACK":
@@ -206,13 +206,17 @@ def receiveMsg():
             #########################################################################################
             #########################################################se eu for broadcast
             if destination == 'TODOS':
-                sleep(sleepTime)
-                print(recvMsg, end='')
-                print(" Cliente:", end='')
-                print(str(client))
-                send.sendto(packet, SENDTO)  
+                if origin == MY_NAME:
+                    print('Removi uma mensagem que foi enviada para TODOS da fila.')
+                    q.get()
+                else:
+                    sleep(sleepTime)
+                    print(recvMsg, end='')
+                    print(" Cliente:", end='')
+                    print(str(client))
+                    send.sendto(packet, SENDTO)  
             #########################################################se eu for apenas o intermediario
-            if origin != MY_NAME and destination != MY_NAME:
+            elif origin != MY_NAME and destination != MY_NAME:
                 #se eu nao for nenhum dos dois, so envia pro proximo
                 sleep(sleepTime)
                 print("Pacote nao e para mim enviando para a proxima maquina")
