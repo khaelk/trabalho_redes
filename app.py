@@ -224,6 +224,9 @@ def receiveMsg():
             #########################################################################################               
         elif receivedPacket[0] == '1111':
             print("Recebi o Token!")
+            if Token:
+                print("Recebi um token duplicado!")
+                continue
             Token = True
             #para maquina com true no arquivo de config controla se recebeu antes do tempo
             if((minimumTime > time.time() - tokenTime) and Control):
