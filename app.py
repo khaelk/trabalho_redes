@@ -210,7 +210,7 @@ def receiveMsg():
                 print(recvMsg, end='')
                 print(" Cliente:", end='')
                 print(str(client))
-                send.sendto(bytes(packet, "utf8"), SENDTO)  
+                send.sendto(packet, SENDTO)  
             #########################################################se eu for apenas o intermediario
             if origin != MY_NAME and destination != MY_NAME:
                 #se eu nao for nenhum dos dois, so envia pro proximo
