@@ -130,9 +130,10 @@ def receiveMsg():
         print("Vou receber um pacote")
         packet, client = udp.recvfrom(1024)
         receivedPacket = str(packet, "utf-8").split(';', 1)
-        if receivedPacket[0] == '2222':
+        content = receivedPacket[0].rstrip('\x00')
+        if content == '2222':
             print("Recebi uma mensagem!")
-            msgHeader = receivedPacket[1].split(':', 4)
+            msgHeader = receivedPacket[1].split(':', 4).rstrip('\x00')
             ack = msgHeader[0]
             origin = msgHeader[1]
             destination = msgHeader[2]
@@ -225,7 +226,7 @@ def receiveMsg():
                 print("Pacote nao e para mim enviando para a proxima maquina")
                 send.sendto(packet, SENDTO) 
             #########################################################################################               
-        elif receivedPacket[0] == '1111':
+        elif content == '1111':
             print("Recebi o Token!")
             if Token:
                 print("Recebi um token duplicado (ja tenho um token)!")
