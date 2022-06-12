@@ -13,10 +13,7 @@ Token = False
 Control = False
 Retransmits = 0
 tokenTime = time.time()
-sleepTime = 5
-#quantidade de maquinas na rede a mais que a atual
-qtdMachines = 1
-minimumTime = sleepTime * qtdMachines
+sleepTime = 0
 
 #chance de gerar erro e chance de perder token/gerar um aleatoriamente
 nakChance = 30
@@ -44,6 +41,12 @@ def readFile( name ):
     return IP_PORTA, NAME, TIME_TOKEN, TOKEN, IP, PORTA
 
 IP_PORTA, MY_NAME, TIME_TOKEN, START_TOKEN, IP, PORTA = readFile('arq.txt')
+
+sleepTime = TIME_TOKEN
+#quantidade de maquinas na rede a mais que a atual
+qtdMachines = 1
+minimumTime = sleepTime * qtdMachines
+timeout = 20
     
 #socket de envio de mensagens
 send = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -113,7 +116,7 @@ def timing():
     global tokenTime
     while True:
         diff =  time.time() - tokenTime
-        if (diff > TIME_TOKEN and Token == False):
+        if (diff > timeout and Token == False):
             print("Timeout do token, reenviando novo token")
             tokenTime = time.time()
             send.sendto(bytes("1111", "utf8"), SENDTO)
@@ -127,9 +130,10 @@ def receiveMsg():
         print("Vou receber um pacote")
         packet, client = udp.recvfrom(1024)
         receivedPacket = str(packet, "utf-8").split(';', 1)
-        if receivedPacket[0] == '2222':
+        content = receivedPacket[0].rstrip('\x00')
+        if content == '2222':
             print("Recebi uma mensagem!")
-            msgHeader = receivedPacket[1].split(':', 4)
+            msgHeader = receivedPacket[1].rstrip('\x00').split(':', 4)
             ack = msgHeader[0]
             origin = msgHeader[1]
             destination = msgHeader[2]
@@ -222,7 +226,7 @@ def receiveMsg():
                 print("Pacote nao e para mim enviando para a proxima maquina")
                 send.sendto(packet, SENDTO) 
             #########################################################################################               
-        elif receivedPacket[0] == '1111':
+        elif content == '1111':
             print("Recebi o Token!")
             if Token:
                 print("Recebi um token duplicado (ja tenho um token)!")
