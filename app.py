@@ -133,7 +133,7 @@ def receiveMsg():
         content = receivedPacket[0].rstrip('\x00')
         if content == '2222':
             print("Recebi uma mensagem!")
-            msgHeader = receivedPacket[1].split(':', 4).rstrip('\x00')
+            msgHeader = receivedPacket[1].rstrip('\x00').split(':', 4)
             ack = msgHeader[0]
             origin = msgHeader[1]
             destination = msgHeader[2]
